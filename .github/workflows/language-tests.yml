@@ -1,0 +1,79 @@
+name: Language Tests
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  test-languages:
+    name: Test with ${{ matrix.language }}
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        language: [python, node, rust, php]
+    
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Install Rust
+        uses: dtolnay/rust-toolchain@stable
+      
+      - name: Build CodeGuard
+        run: cargo build --release
+      
+      - name: Setup Python
+        if: matrix.language == 'python'
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      
+      - name: Setup Node.js
+        if: matrix.language == 'node'
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      
+      - name: Setup PHP
+        if: matrix.language == 'php'
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.2'
+      
+      - name: Create test project
+        run: |
+          mkdir test-project
+          cd test-project
+          case ${{ matrix.language }} in
+            python)
+              echo "Creating Python project..."
+              touch requirements.txt
+              touch pytest.ini
+              touch .flake8
+              ;;
+            node)
+              echo "Creating Node.js project..."
+              npm init -y
+              touch .eslintrc
+              touch tsconfig.json
+              ;;
+            rust)
+              echo "Creating Rust project..."
+              cargo init --bin
+              ;;
+            php)
+              echo "Creating PHP project..."
+              composer init --no-interaction
+              touch phpunit.xml
+              ;;
+          esac
+      
+      - name: Run CodeGuard
+        run: |
+          cd test-project
+          # Test basic functionality first
+          ../target/release/codeguard --help
+          ../target/release/codeguard --version
+          # Then run the actual test
+          ../target/release/codeguard . 

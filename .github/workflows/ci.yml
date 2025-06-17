@@ -1,0 +1,76 @@
+name: CI
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  test:
+    name: Test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Install Rust
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          components: rustfmt, clippy
+      
+      - name: Cache dependencies
+        uses: Swatinem/rust-cache@v2
+      
+      - name: Run tests
+        run: cargo test --verbose
+      
+      - name: Run clippy
+        run: cargo clippy -- -D warnings
+      
+      - name: Check formatting
+        run: cargo fmt -- --check
+
+  self-test:
+    name: Self Test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Install Rust
+        uses: dtolnay/rust-toolchain@stable
+      
+      - name: Build CodeGuard
+        run: cargo build --release
+      
+      - name: Install Python tools
+        run: |
+          python -m pip install --upgrade pip
+          pip install pytest flake8 pylint mypy black
+      
+      - name: Install Node.js tools
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      
+      - name: Install npm tools
+        run: |
+          npm install -g eslint prettier typescript
+      
+      - name: Run CodeGuard on itself
+        run: |
+          # Create a test directory with some files
+          mkdir -p test-project
+          cd test-project
+          touch test.py
+          touch test.js
+          touch Cargo.toml
+          touch composer.json
+          
+          # Run CodeGuard with --help to test basic functionality
+          ../target/release/codeguard --help
+          
+          # Run CodeGuard with a specific directory
+          ../target/release/codeguard . 
